@@ -47,7 +47,8 @@ docker run -e RCON_HOST=127.0.0.1 \
 	   -e DYNMAP_ENABLED="True" \
 	   -p 8000:8000 \
 	   -v /opt/all_the_mods_3/world:/world \
-	   joshi425/minecraft_exporter
+	   -v ./usernames-uuids.json:/usernames-uuids.json \
+	   thespartan94/minecraft_exporter
 ```
 
 # Metrics
@@ -99,6 +100,28 @@ tps_1m
 tps_5m 
 tps_15m
 
+```
+
+# Convert UUID to usernames manually
+
+The service checks for the existence of the `/usernames-uuids.json` file. This file should be structured as the following json array:
+
+```
+[
+ {
+        "uuid": "example-uuid-adw92832h",
+        "username": "PlayerUsername1"
+    },
+    {
+        "uuid": "example-uuid-awdwwj2839",
+        "username": "PlayerUsername2"
+    }
+]
+```
+
+for proper functioning of the service in offline mode. If not interested, keep the file empty by using:
+```
+[]
 ```
 
 # Dashboards
