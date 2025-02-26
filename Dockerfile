@@ -1,4 +1,4 @@
-FROM python:3.10-alpine
+FROM arm64v8/python:3.10.16-alpine
 
 COPY requirements.txt minecraft_exporter.py /
 RUN pip install --no-cache-dir -r requirements.txt
