@@ -18,6 +18,8 @@ class MinecraftCollector(object):
         self.player_directory = "/world/playerdata"
         self.advancements_directory = "/world/advancements"
         self.better_questing = "/world/betterquesting"
+        self.usernames_uuids = "/usernames-uuids.json"
+        self.manual_mappings = None
         self.player_map = dict()
         self.quests_enabled = False
 
@@ -39,7 +41,38 @@ class MinecraftCollector(object):
         print("flushing playername cache")
         self.player_map = dict()
 
+    def load_manual_mappings(self):
+            """
+            Load the manual username-UUID mappings from the JSON file.
+            Caches the result to avoid reading the file multiple times.
+            """
+            if self.manual_mappings is not None:
+                return self.manual_mappings
+
+            try:
+                with open(self.usernames_uuids, 'r') as file:
+                    data = json.load(file)
+                    self.manual_mappings = {entry['uuid']: entry['username'] for entry in data}
+            except FileNotFoundError:
+                print(f"Error: The file {self.usernames_uuids} was not found.")
+                self.manual_mappings = {}
+            except json.JSONDecodeError:
+                print(f"Error: The file {self.usernames_uuids} contains invalid JSON.")
+                self.manual_mappings = {}
+            except Exception as e:
+                print(f"An unexpected error occurred while loading manual mappings: {e}")
+                self.manual_mappings = {}
+
+            return self.manual_mappings
+    
     def uuid_to_player(self, uuid):
+        manual_mappings = self.load_manual_mappings()
+        username = manual_mappings.get(uuid)
+        if username:
+            return username
+    
+        print(f"UUID {uuid} not found in manual mappings. Proceeding to fallback.")
+
         if uuid in self.player_map:
             return self.player_map[uuid]
         else:
