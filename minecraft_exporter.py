@@ -34,6 +34,29 @@ class MinecraftCollector(object):
 
         schedule.every().day.at("01:00").do(self.flush_playernamecache)
 
+    @classmethod
+    def from_test(cls, mock_rcon=None):
+        """
+        Alternative constructor for testing purposes. Initializes an instance without
+        connecting to RCON and without scheduling jobs.
+        """
+        instance = cls.__new__(cls)  # Create a new instance without calling __init__
+        # Initialize attributes without executing the operations in __init__
+        instance.stats_directory = "/world/stats"
+        instance.player_directory = "/world/playerdata"
+        instance.advancements_directory = "/world/advancements"
+        instance.better_questing = "/world/betterquesting"
+        instance.usernames_uuids = "/usernames-uuids.json"
+        instance.manual_mappings = None
+        instance.player_map = dict()
+        instance.quests_enabled = False
+
+        instance.rcon = mock_rcon
+        instance.rcon_connected = True
+
+        # Skip scheduling tasks
+        return instance
+    
     def get_players(self):
         return [f[:-5] for f in listdir(self.stats_directory) if isfile(join(self.stats_directory, f))]
 
@@ -188,13 +211,32 @@ class MinecraftCollector(object):
                                                                     value=duration_per_chunk, labels={'type': state})
 
         # player
-        resp = self.rcon_command("list")
-        playerregex = re.compile("players online:(.*)")
-        if playerregex.findall(resp):
-            for player in playerregex.findall(resp)[0].split(","):
-                if not player.isspace():
-                    player_online.add_sample('player_online', value=1, labels={'player': player.lstrip()})
+        try:
+            resp = self.rcon_command("list")
 
+            # Ensure the response is a string
+            if not isinstance(resp, str):
+                raise TypeError("Expected a string response")
+
+            # Regex to find players
+            playerregex = re.compile(r"players online: (.*)")
+            match = playerregex.search(resp)
+
+            if match:
+                players_line = match.group(1)
+                for player in players_line.split(","):
+                    if player.strip():  # check for valid names
+                        player_online.add_sample('player_online', value=1, labels={'player': player.strip()})
+
+            if player_online.samples:
+                metrics.append(player_online)
+        except (TypeError, ValueError):
+            # Handle cases where the response is not a valid string
+            print(f"Type conversion while fetching players occurred.")
+            pass
+        except Exception as e:
+            # Catch other exceptions such as RCON command errors
+            print(f"Error: {str(e)}")
         return metrics
 
     def get_player_quests_finished(self, uuid):
